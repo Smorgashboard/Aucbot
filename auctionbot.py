@@ -116,10 +116,19 @@ def allAuctions() :
         x.click()
         clickHere = driver.find_elements(By.CSS_SELECTOR, 'a.btn-u.btn-u-lg.btn-block.btn-default.rounded.margin-bottom-20')
         for click in clickHere:
+            print(click)
             click.click()
-            allItems = driver.find_elements(By.CSS_SELECTOR, 'a.ng-binding')
-            for item in allItems :
+            auctionItemsWindow = driver.current_window_handle
+            for window_handle in driver.window_handles:
+                if window_handle != original_window:
+                    driver.switch_to.window(window_handle)
+            time.sleep(15)
+            print("waking up")
+            allItems = driver.find_elements(By.CSS_SELECTOR, 'div.roboto.medium-gray.description.ng-binding')
+            print(allItems)
+            for item in allItems:
                 item.click()
+                print("nested for")
                 time.sleep(7)
                 gatherIntel()
 
