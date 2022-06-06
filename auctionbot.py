@@ -1,7 +1,3 @@
-
-from ast import Return
-from codecs import escape_encode
-from multiprocessing.spawn import old_main_modules
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,7 +6,7 @@ from selenium.webdriver.common.by import By
 import time
 from selenium.common.exceptions import NoSuchElementException
 
-goods = ["renogy"]
+goods = ["renogy", "dewalt", "apple"]
 
 
 driver = webdriver.Firefox()
@@ -21,10 +17,12 @@ wait = WebDriverWait(driver, 10)
 search_element = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="ls-global"]/body/div[2]/div[4]/div/div/form/div[2]/input'))).click()
 
 class Item:
-    def __init__(self, name, price, endDate):
+    def __init__(self, name, price, endDate, auction, itemNumber):
         self.name = name
         self.price = price
         self.endDate = endDate
+        self.auction = auction
+        self.itemNumber = itemNumber
         
 
 def doMath(olaPrice, ebayPrice):
@@ -46,20 +44,23 @@ def gatherIntel() :
         if window_handle != original_window:
             driver.switch_to.window(window_handle)
             break
-    print(driver.current_url)
     itemName = driver.find_element(By.CSS_SELECTOR, 'div.name.roboto.bold.title-text-color.no-side-scroll.ng-binding').get_attribute('innerText')
+    itemNumber = itemName[:4]
+    itemNumber = itemNumber.strip('#')
     itemName = itemName[6:]
     itemPrice = driver.find_element(By.CSS_SELECTOR, 'div.max-bid.col-xs-5.col-sm-5.roboto.black.small.ellipsis.ng-binding.ng-scope').get_attribute('innerText')
     itemPrice = itemPrice.strip("Asking [$")
     itemPrice = itemPrice.replace("]", "")
     itemPrice = int(itemPrice)
-    print(itemPrice)
     itemEndDate = driver.find_element(By.CSS_SELECTOR, 'div.reminder.col-xs-6.col-sm-6.roboto.black.small.ellipsis').get_attribute('innerText')
-    print(itemEndDate)
-    i1 = Item(itemName, itemPrice, itemEndDate)
-    print(i1.name)
-    print(i1.price)
-    print(i1.endDate)
+    auction = driver.find_element(By.CSS_SELECTOR, 'div.roboto.bold.header.ellipsis.header-primary-text-color').get_attribute('innerText')
+    print(auction)
+    i1 = Item(itemName, itemPrice, itemEndDate, auction, itemNumber)
+    print(f"{i1.name} is available")
+    print(f" for {i1.price} dollars,")
+    print(f" it {i1.endDate}")
+    print(f"its located at {auction}, ")
+    print(f"and its item number {itemNumber}.")
     olaSearchWindow = driver.current_window_handle
     ebayPrice = searchEbay(i1.name, olaSearchWindow)
     doMath(itemPrice, ebayPrice)
@@ -103,9 +104,26 @@ def search() :
             for r in results:
                 r.click()
                 gatherIntel()
-                
-            print(results)
         else:
             print("no results found")
+        se = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div/div/form/div[2]/input")
+        se.click()
+        
+def allAuctions() :
+    driver.get("https://www.onlineliquidationauction.com/")
+    allAucs = driver.find_elements(By.CSS_SELECTOR, 'div.col-md-5.col-sm-6.col-xs-12')
+    for x in allAucs:
+        x.click()
+        clickHere = driver.find_elements(By.CSS_SELECTOR, 'a.btn-u.btn-u-lg.btn-block.btn-default.rounded.margin-bottom-20')
+        for click in clickHere:
+            click.click()
+            allItems = driver.find_elements(By.CSS_SELECTOR, 'a.ng-binding')
+            for item in allItems :
+                item.click()
+                time.sleep(7)
+                gatherIntel()
 
-search()
+
+#search()
+
+allAuctions()
