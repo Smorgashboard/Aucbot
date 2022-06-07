@@ -6,8 +6,8 @@ from selenium.webdriver.common.by import By
 import time
 from selenium.common.exceptions import NoSuchElementException
 
-goods = ["renogy", "dewalt", "apple"]
-
+goods = ["dewalt"]
+ebaysearches = 0
 
 driver = webdriver.Firefox()
 driver.get("https://www.onlineliquidationauction.com/")
@@ -26,6 +26,8 @@ class Item:
         
 
 def doMath(olaPrice, ebayPrice):
+    if ebayPrice == 0:
+        print("Could not find on Ebay")
     cost = (olaPrice * .13) + (olaPrice * .0675) + olaPrice
     print(cost)
     revenue = ebayPrice * .90
@@ -35,8 +37,6 @@ def doMath(olaPrice, ebayPrice):
         print(f"You could make {profit} dollars!") 
     else:
         print("Dont buy it")
-        
-    
 
 def gatherIntel() :
     time.sleep(5)
@@ -68,6 +68,8 @@ def gatherIntel() :
     driver.switch_to.window(original_window)
 
 def searchEbay(i1Name, olaSearchWindow):
+    global ebaysearches
+    ebaysearches = ebaysearches + 1
     driver.switch_to.new_window('tab')
     driver.get("https://www.ebay.com/sch/ebayadvsearch")
     ebaySearchBar = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="_nkw"]'))).click()
@@ -78,36 +80,47 @@ def searchEbay(i1Name, olaSearchWindow):
     time.sleep(5)
     ese.send_keys(Keys.RETURN)
     time.sleep(5)
-    ebayPrice = driver.find_element(By.XPATH, '/html/body/div[5]/div[2]/div[1]/div[1]/div/div[1]/div/div[3]/div/div[1]/div/w-root/div/div/ul/li[2]/ul[1]/li[1]/span').get_attribute('innerHTML')
-    ebayPrice = ebayPrice.replace('$', '')
-    ebayPrice = ebayPrice.replace('"', '')
-    ebayPrice = ebayPrice[:-3]
-    ebayPrice = ebayPrice.strip()
-    ebayPrice = int(ebayPrice)
-    print (ebayPrice)
+    try: 
+        ebayPrice = driver.find_element(By.XPATH, '/html/body/div[5]/div[2]/div[1]/div[1]/div/div[1]/div/div[3]/div/div[1]/div/w-root/div/div/ul/li[2]/ul[1]/li[1]/span').get_attribute('innerHTML')
+        ebayPrice = ebayPrice.replace('$', '')
+        ebayPrice = ebayPrice.replace('"', '')
+        ebayPrice = ebayPrice[:-3]
+        ebayPrice = ebayPrice.strip()
+        ebayPrice = int(ebayPrice)
+        print (ebayPrice)
+    except NoSuchElementException:
+        ebayPrice = 0
     driver.close()
     driver.switch_to.window(olaSearchWindow)
     return ebayPrice
+    
 
+def resultsFound():
+    results = driver.find_elements(By.CSS_SELECTOR, 'div.col-md-5.col-sm-6.col-xs-12')
+    for r in results:
+        r.click()
+        gatherIntel()
+    try:
+        nextPage = driver.find_element(By.XPATH, '//*[@id="main-content-top"]/div/div[1]/div[7]/div/ul/li[3]/a')
+        nextPage.click()
+        resultsFound()
+    except NoSuchElementException:
+        print("No more pages.")
+        se = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div/div/form/div[2]/input")
+        se.click()
 
-
-def search() :    
-    se = driver.find_element(By.XPATH, '//*[@id="ls-global"]/body/div[2]/div[4]/div/div/form/div[2]/input')
+def search():
     for good in goods:
+        se = driver.find_element(By.XPATH, '//*[@id="ls-global"]/body/div[2]/div[4]/div/div/form/div[2]/input')
         print(good)
         se.send_keys(good)
         se.send_keys(Keys.RETURN)
         time.sleep(5)
         if driver.find_elements(By.CSS_SELECTOR, '.alert'):
             print("results found")
-            results = driver.find_elements(By.CSS_SELECTOR, 'div.col-md-5.col-sm-6.col-xs-12')
-            for r in results:
-                r.click()
-                gatherIntel()
+            resultsFound()
         else:
             print("no results found")
-        se = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div/div/form/div[2]/input")
-        se.click()
         
 def allAuctions() :
     driver.get("https://www.onlineliquidationauction.com/")
@@ -133,6 +146,9 @@ def allAuctions() :
                 gatherIntel()
 
 
-#search()
+search()
 
-allAuctions()
+#allAuctions()
+
+
+print(ebaysearches)
