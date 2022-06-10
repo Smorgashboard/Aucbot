@@ -6,7 +6,8 @@ from selenium.webdriver.common.by import By
 import time
 from selenium.common.exceptions import NoSuchElementException
 
-goods = ["dewalt"]
+#goods = ["dewalt", "lego", "apple", "Nexstar", "Renogy", "makita", "milwaukee", "rigid", "victron", "dometic", "yeti", "nintendo", "microsoft", "xbox", "ps5", "playstation", "pokemon", "Magic", "Yugioh", "hp", "meta", "quest", "dell", "raspberry pi", "dji"]
+goods = ["makita", "lego"]
 ebaysearches = 0
 
 driver = webdriver.Firefox()
@@ -15,15 +16,21 @@ original_window = driver.current_window_handle
 wait = WebDriverWait(driver, 10)
 
 search_element = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="ls-global"]/body/div[2]/div[4]/div/div/form/div[2]/input'))).click()
+products = []
 
 class Item:
-    def __init__(self, name, price, endDate, auction, itemNumber):
+    def __init__(self, name, price, endDate, auction, itemNumber, itemUrl, profit):
         self.name = name
         self.price = price
         self.endDate = endDate
         self.auction = auction
         self.itemNumber = itemNumber
-        
+        self.itemUrl = itemUrl
+        self.profit = profit
+
+def gatherForReview(name, price, endDate, auction, itemNumber, itemUrl, profit):
+    products.append( Item(name,price,endDate,auction,itemNumber,itemUrl,profit))
+
 
 def doMath(olaPrice, ebayPrice):
     if ebayPrice == 0:
@@ -33,17 +40,15 @@ def doMath(olaPrice, ebayPrice):
     revenue = ebayPrice * .90
     print(revenue)
     profit = revenue - cost
-    if profit >= 10:
-        print(f"You could make {profit} dollars!") 
+    if profit >= 30:
+        print("profit") 
     else:
         print("Dont buy it")
+    return profit
 
 def gatherIntel() :
     time.sleep(5)
-    for window_handle in driver.window_handles:
-        if window_handle != original_window:
-            driver.switch_to.window(window_handle)
-            break
+    olaSearchWindow = driver.current_window_handle
     itemName = driver.find_element(By.CSS_SELECTOR, 'div.name.roboto.bold.title-text-color.no-side-scroll.ng-binding').get_attribute('innerText')
     itemNumber = itemName[:4]
     itemNumber = itemNumber.strip('#')
@@ -54,18 +59,17 @@ def gatherIntel() :
     itemPrice = int(itemPrice)
     itemEndDate = driver.find_element(By.CSS_SELECTOR, 'div.reminder.col-xs-6.col-sm-6.roboto.black.small.ellipsis').get_attribute('innerText')
     auction = driver.find_element(By.CSS_SELECTOR, 'div.roboto.bold.header.ellipsis.header-primary-text-color').get_attribute('innerText')
-    print(auction)
-    i1 = Item(itemName, itemPrice, itemEndDate, auction, itemNumber)
-    print(f"{i1.name} is available")
-    print(f" for {i1.price} dollars,")
-    print(f" it {i1.endDate}")
-    print(f"its located at {auction}, ")
-    print(f"and its item number {itemNumber}.")
-    olaSearchWindow = driver.current_window_handle
-    ebayPrice = searchEbay(i1.name, olaSearchWindow)
-    doMath(itemPrice, ebayPrice)
+    url = driver.current_url
+    ebayPrice = searchEbay(itemName, olaSearchWindow)
+    profit = doMath(itemPrice, ebayPrice)
+    i1 = Item(itemName, itemPrice, itemEndDate, auction, itemNumber, url, profit)
+    gatherForReview(i1.name, i1.price, i1.endDate, i1.auction, i1.itemNumber, i1.itemUrl, i1.profit)
     driver.close()
-    driver.switch_to.window(original_window)
+    for window_handle in driver.window_handles:
+        if window_handle != olaSearchWindow:
+            driver.switch_to.window(olaSearchWindow)
+            break
+    
 
 def searchEbay(i1Name, olaSearchWindow):
     global ebaysearches
@@ -110,8 +114,8 @@ def resultsFound():
         se.click()
 
 def search():
+    se = driver.find_element(By.XPATH, '//*[@id="ls-global"]/body/div[2]/div[4]/div/div/form/div[2]/input') 
     for good in goods:
-        se = driver.find_element(By.XPATH, '//*[@id="ls-global"]/body/div[2]/div[4]/div/div/form/div[2]/input')
         print(good)
         se.send_keys(good)
         se.send_keys(Keys.RETURN)
@@ -121,6 +125,7 @@ def search():
             resultsFound()
         else:
             print("no results found")
+            se = driver.find_element(By.XPATH, "/html/body/div[2]/div[3]/div/div/form/div[2]/input")
         
 def allAuctions() :
     driver.get("https://www.onlineliquidationauction.com/")
@@ -150,5 +155,5 @@ search()
 
 #allAuctions()
 
-
 print(ebaysearches)
+print(products)
